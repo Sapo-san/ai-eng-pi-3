@@ -11,34 +11,31 @@ from tracing.langfuse_config import langfuse_handler
 
 from langfuse import propagate_attributes
 
+# LLM
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0
 )
 
-
+# Tools
 tools = [
     hr_agent_tool,
     ti_agent_tool,
     finance_agent_tool
 ]
 
+# Prompt
+with open("prompts/orquestador.txt", mode='r') as prompt_file:
+    prompt_orquestador = prompt_file.read()
+
+# Agente
 agent = create_agent(
     model=llm,
     tools=tools,
-    system_prompt="""
-Eres un agente orquestador.
-
-Tu trabajo es decidir qué agente especialista debe responder la pregunta.
-
-Los agentes disponibles son:
-
-hr_agent → preguntas sobre recursos humanos  
-ti_agent → preguntas sobre soporte técnico o TI  
-finance_agent → preguntas sobre finanzas o reportes de la empresa
-"""
+    system_prompt=prompt_orquestador
 )
 
+# Extractor de respuesta (Se usa para pasar a la sgte cadena)
 extract_specialist_answer = RunnableLambda(
     lambda result: {
         "question": result["messages"][0].content, # type: ignore
@@ -46,16 +43,19 @@ extract_specialist_answer = RunnableLambda(
     }
 )
 
+# Cadena
 multiagent_chain = agent | extract_specialist_answer | evaluator_chain
 
 def run_orchestrator(question: str):
+    '''
+    Ejecuta el flujo multiagente
+    '''
 
-    with propagate_attributes(trace_name="Flujo Multiagente Aperture"):
+    with propagate_attributes(trace_name="Flujo Multiagente Aperture"):# Setear nombre del flujo
 
         config: RunnableConfig = {
             "callbacks": [langfuse_handler],
-            "run_name": "multiagent_pipeline",
-
+            "run_name": "multiagent_pipeline"
         }
 
         result = multiagent_chain.invoke(

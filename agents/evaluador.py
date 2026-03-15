@@ -2,39 +2,17 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
 
-# Prompt del evaluador
-evaluator_prompt = ChatPromptTemplate.from_template("""
-res un evaluador de respuestas dentro de una empresa.
+# Prompt template del evaluador
+with open("prompts/evaluador.txt", mode='r') as prompt_file:
+    prompt_evaluador = prompt_file.read()
 
-Debes evaluar la calidad de la respuesta entregada por un agente especialista.
+evaluator_prompt = ChatPromptTemplate.from_template(prompt_evaluador)
 
-Pregunta del usuario:
-{question}
-
-Respuesta del agente:
-{answer}
-
-Evalúa la respuesta considerando:
-
-- precisión
-- claridad
-- utilidad
-
-Entrega:
-
-score: número entre 1 y 10  
-feedback: breve explicación de 25 palabras o menos.
-
-Responde SOLO en este formato:
-
-score: X
-feedback: texto
-""")
-
-
+# LLM
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0
 )
 
+# Cadena del evaluador
 evaluator_chain = evaluator_prompt | llm

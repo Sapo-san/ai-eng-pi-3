@@ -4,11 +4,7 @@ load_dotenv()
 
 from agents.orquestador import run_orchestrator
 
-question = "¿ingresos de diciembre del año anterior?"
-
-from tracing.langfuse_config import langfuse_handler
-
+question = '¿Que ocurre si aparece un portal que lleva a otra dimension?'
 
 ev = run_orchestrator(question)
-
 print(ev)
