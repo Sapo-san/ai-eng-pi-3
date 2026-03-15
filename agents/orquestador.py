@@ -1,6 +1,7 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnableLambda
 from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 from langchain.agents import create_agent
 
@@ -35,6 +36,29 @@ agent = create_agent(
     system_prompt=prompt_orquestador
 )
 
+# ------------------------------------------------------------
+def debug_orchestrator(result):
+    '''
+    Imprime la respuesta del orquestador en pantalla
+    '''
+    for elem in result['messages']:
+        if isinstance(elem, HumanMessage):
+            continue
+        elif isinstance(elem, AIMessage):
+            if len(elem.tool_calls) > 0:
+                for tc in elem.tool_calls:
+                    print (f'Orquestador | Tool call: {tc['name']}')
+                continue
+            if elem.content != '':
+                print(f"Orquestador | Respuesta: {elem.content}")
+        
+        elif isinstance(elem, ToolMessage):
+            print (f'Especialista {elem.name} : {elem.content}')
+    return result
+
+debug_node = RunnableLambda(debug_orchestrator)
+# ------------------------------------------------------------
+
 # Extractor de respuesta (Se usa para pasar a la sgte cadena)
 extract_specialist_answer = RunnableLambda(
     lambda result: {
@@ -43,8 +67,12 @@ extract_specialist_answer = RunnableLambda(
     }
 )
 
+# ------------------------------------------------------------
+
 # Cadena
-multiagent_chain = agent | extract_specialist_answer | evaluator_chain
+multiagent_chain = agent | debug_orchestrator | extract_specialist_answer | evaluator_chain
+
+# ------------------------------------------------------------
 
 def run_orchestrator(question: str):
     '''
@@ -70,4 +98,7 @@ def run_orchestrator(question: str):
             config=config
         )
 
-        return result.content
+        print(f'Evaluador | score: {result.score}') # type: ignore
+        print(f'Evaluador | score: {result.feedback}') # type: ignore
+
+        return result
