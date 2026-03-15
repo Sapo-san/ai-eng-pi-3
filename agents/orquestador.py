@@ -9,6 +9,7 @@ from agents.evaluador import evaluator_chain
 
 from tracing.langfuse_config import langfuse_handler
 
+from langfuse import propagate_attributes
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
@@ -40,8 +41,8 @@ finance_agent → preguntas sobre finanzas o reportes de la empresa
 
 extract_specialist_answer = RunnableLambda(
     lambda result: {
-        "question": result["messages"][0].content,
-        "answer": result["messages"][-1].content
+        "question": result["messages"][0].content, # type: ignore
+        "answer": result["messages"][-1].content # type: ignore
     }
 )
 
@@ -49,24 +50,24 @@ multiagent_chain = agent | extract_specialist_answer | evaluator_chain
 
 def run_orchestrator(question: str):
 
-    config: RunnableConfig = {
-        "callbacks": [langfuse_handler],
-        "run_name": "multiagent_pipeline",
-        "metadata": {
-            "langfuse_trace_name": "flujo_multiagente"
+    with propagate_attributes(trace_name="Flujo Multiagente Aperture"):
+
+        config: RunnableConfig = {
+            "callbacks": [langfuse_handler],
+            "run_name": "multiagent_pipeline",
+
         }
-    }
 
-    result = multiagent_chain.invoke(
-        {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": question
-                }
-            ]
-        },
-        config=config
-    )
+        result = multiagent_chain.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": question
+                    }
+                ]
+            },
+            config=config
+        )
 
-    return result.content
+        return result.content

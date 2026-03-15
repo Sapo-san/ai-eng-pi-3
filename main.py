@@ -4,7 +4,7 @@ load_dotenv()
 
 from agents.orquestador import run_orchestrator
 
-question = "¿Cuales son los ingresos del ultimo trimestre?"
+question = "¿ingresos de diciembre del año anterior?"
 
 from tracing.langfuse_config import langfuse_handler
 
