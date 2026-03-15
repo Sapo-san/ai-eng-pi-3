@@ -1,6 +1,12 @@
+from os import getenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain.tools import tool
+
+# Modelo
+MODEL = getenv('MODEL')
+if not MODEL:
+    MODEL = 'gpt-4o-mini'
 
 from rag.vector_store import hr_retriever, ti_retriever, finance_retriever
 
@@ -11,7 +17,7 @@ with open("prompts/especialista.txt", mode='r') as prompt_file:
 rag_prompt = ChatPromptTemplate.from_template(prompt_especialista)
 
 # LLM
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatOpenAI(model=MODEL, temperature=0)
 
 # Especialista RAG
 def rag_answer(retriever, department_name, question):

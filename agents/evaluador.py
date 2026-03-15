@@ -1,6 +1,8 @@
+from os import getenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
+
 
 class Evaluation(BaseModel):
     score: int = Field(
@@ -16,9 +18,14 @@ with open("prompts/evaluador.txt", mode='r') as prompt_file:
 
 evaluator_prompt = ChatPromptTemplate.from_template(prompt_evaluador)
 
+# Modelo
+MODEL = getenv('MODEL')
+if not MODEL:
+    MODEL = 'gpt-4o-mini'
+
 # LLM
 llm = ChatOpenAI(
-    model="gpt-4o-mini",
+    model=MODEL,
     temperature=0
 ).with_structured_output(Evaluation)
 

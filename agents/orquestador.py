@@ -1,3 +1,4 @@
+from os import getenv
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnableLambda
 from langchain_core.runnables import RunnableConfig
@@ -12,9 +13,14 @@ from tracing.langfuse_config import langfuse_handler
 
 from langfuse import propagate_attributes
 
+# Modelo
+MODEL = getenv('MODEL')
+if not MODEL:
+    MODEL = 'gpt-4o-mini'
+
 # LLM
 llm = ChatOpenAI(
-    model="gpt-4o-mini",
+    model=MODEL,
     temperature=0
 )
 
@@ -69,14 +75,16 @@ extract_specialist_answer = RunnableLambda(
 
 # ------------------------------------------------------------
 
-# Cadena
-multiagent_chain = agent | debug_orchestrator | extract_specialist_answer | evaluator_chain
+# Cadenas
+multiagent_chain = agent | debug_orchestrator | extract_specialist_answer 
+multiagent_chain_with_ev = agent | debug_orchestrator | extract_specialist_answer | evaluator_chain
 
 # ------------------------------------------------------------
 
 def run_orchestrator(question: str):
     '''
     Ejecuta el flujo multiagente
+    Orquestador -> Agente especialista
     '''
 
     with propagate_attributes(trace_name="Flujo Multiagente Aperture"):# Setear nombre del flujo
@@ -87,6 +95,33 @@ def run_orchestrator(question: str):
         }
 
         result = multiagent_chain.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": question
+                    }
+                ]
+            },
+            config=config
+        )
+
+        return result
+    
+def run_orchestrator_and_evaluator(question: str):
+    '''
+    Ejecuta el flujo multiagente
+    Orquestador -> Agente especialista -> Evaluador de respuestas
+    '''
+
+    with propagate_attributes(trace_name="Flujo Multiagente Aperture Evaluado"):# Setear nombre del flujo
+
+        config: RunnableConfig = {
+            "callbacks": [langfuse_handler],
+            "run_name": "multiagent_pipeline"
+        }
+
+        result = multiagent_chain_with_ev.invoke(
             {
                 "messages": [
                     {
