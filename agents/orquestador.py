@@ -1,65 +1,72 @@
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda
 from langchain_core.runnables import RunnableConfig
+
+from langchain.agents import create_agent
+
+from agents.especialistas import hr_agent_tool, ti_agent_tool, finance_agent_tool
+from agents.evaluador import evaluator_chain
 
 from tracing.langfuse_config import langfuse_handler
 
-# Prompt
-orchestrator_prompt = ChatPromptTemplate.from_template("""
-Eres un agente orquestador.
 
-Tu trabajo es decidir que agente especialista debe responder la pregunta del usuario.
-
-Los agentes disponibles son:
-
-ti_agent → preguntas de soporte técnico o ti
-
-hr_agent → preguntas sobre recursos humanos
-
-finance_agent → preguntas finanzas o reportes sobre la empresa
-
-Responde SOLO con el nombre del agente adecuado. En caso no haber un agente adecuado responder "invalid"
-
-Pregunta:
-{question}
-""")
-
-# Instancia del LLM
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0
 )
 
-# Cadena 
-orchestrator_chain = orchestrator_prompt | llm
 
-# Configuracion para tracing
-config: RunnableConfig = {
-    "callbacks": [langfuse_handler],
-    "run_name": "orquestador"
-}
+tools = [
+    hr_agent_tool,
+    ti_agent_tool,
+    finance_agent_tool
+]
 
-# Orquestador
-def route_question(question: str):
-    '''
-    Recibe una pregunta del usuario,
-    responde el nombre del agente a que corresponde
-    enrutar la pregunta.
-    '''
+agent = create_agent(
+    model=llm,
+    tools=tools,
+    system_prompt="""
+Eres un agente orquestador.
 
-    response = orchestrator_chain.invoke(
+Tu trabajo es decidir qué agente especialista debe responder la pregunta.
+
+Los agentes disponibles son:
+
+hr_agent → preguntas sobre recursos humanos  
+ti_agent → preguntas sobre soporte técnico o TI  
+finance_agent → preguntas sobre finanzas o reportes de la empresa
+"""
+)
+
+extract_specialist_answer = RunnableLambda(
+    lambda result: {
+        "question": result["messages"][0].content,
+        "answer": result["messages"][-1].content
+    }
+)
+
+multiagent_chain = agent | extract_specialist_answer | evaluator_chain
+
+def run_orchestrator(question: str):
+
+    config: RunnableConfig = {
+        "callbacks": [langfuse_handler],
+        "run_name": "multiagent_pipeline",
+        "metadata": {
+            "langfuse_trace_name": "flujo_multiagente"
+        }
+    }
+
+    result = multiagent_chain.invoke(
         {
-            "question": question
+            "messages": [
+                {
+                    "role": "user",
+                    "content": question
+                }
+            ]
         },
         config=config
-        )
+    )
 
-    agent = response.content.strip()
-
-    if agent not in ['ti_agent','hr_agent','finance_agent','invalid']:
-        print('> Respuesta inválida de orquestador detectada')
-        return 'invalid'
-
-    return agent
-
-
+    return result.content

@@ -1,13 +1,10 @@
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain_core.runnables import RunnableConfig
-from tracing.langfuse_config import langfuse_handler, langfuse
+from langchain_core.prompts import ChatPromptTemplate
 
 
-
-# Prompt
-evaluation_prompt = ChatPromptTemplate.from_template("""
-Eres un evaluador de respuestas dentro de una empresa.
+# Prompt del evaluador
+evaluator_prompt = ChatPromptTemplate.from_template("""
+res un evaluador de respuestas dentro de una empresa.
 
 Debes evaluar la calidad de la respuesta entregada por un agente especialista.
 
@@ -34,31 +31,10 @@ score: X
 feedback: texto
 """)
 
-# LLM
+
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0
 )
 
-# Cadena
-evaluation_chain = evaluation_prompt | llm
-
-def evaluate_answer(question: str, answer: str):
-
-    # Config para traceo
-    config: RunnableConfig = {
-        "callbacks": [langfuse_handler],
-        "run_name": "agente_evaluador"
-    }
-
-
-    response = evaluation_chain.invoke({
-        "question": question,
-        "answer": answer
-    },
-    config=config
-    )
-
-    print(f">> {response.content}")
-
-    return response.content
+evaluator_chain = evaluator_prompt | llm

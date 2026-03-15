@@ -8,7 +8,6 @@ from langchain_openai import ChatOpenAI
 
 from tracing.langfuse_config import langfuse_handler
 
-
 embeddings = OpenAIEmbeddings()
 
 def load_documents(path):
@@ -60,30 +59,21 @@ Pregunta:
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
-
-
 # Respuesta del RAG
-def rag_answer(agent_name, retriever, department_name, question):
+def rag_answer(retriever, department_name, question):
 
     docs = retriever.invoke(question)
 
     context = "\n".join([d.page_content for d in docs])
 
-    chain = rag_prompt | llm # Chain 
-
-    # Configuracion para tracing
-    config: RunnableConfig = {
-        "callbacks": [langfuse_handler],
-        "run_name": agent_name
-    }
+    chain = rag_prompt | llm
 
     response = chain.invoke(
         {
             "department_name": department_name,
             "context": context,
             "question": question
-        },
-        config=config
+        }
     )
 
-    return response.content
+    return str(response.content)

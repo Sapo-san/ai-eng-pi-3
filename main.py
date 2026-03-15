@@ -2,30 +2,13 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from agents.orquestador import route_question
-from agents.especialistas import hr_agent, ti_agent, finance_agent
-from agents.evaluador import evaluate_answer
+from agents.orquestador import run_orchestrator
 
-question = "¿Cuántos días de vacaciones tienen los empleados?"
+question = "¿Cuales son los ingresos del ultimo trimestre?"
 
-agent = route_question(question)
+from tracing.langfuse_config import langfuse_handler
 
-if agent == "hr_agent":
-    answer = hr_agent(question)
 
-elif agent == "ti_agent":
-    answer = ti_agent(question)
+ev = run_orchestrator(question)
 
-elif agent == "finance_agent":
-    answer = finance_agent(question)
-
-else:
-    answer = "No pude clasificar la pregunta."
-
-evaluation = evaluate_answer(question, str(answer))
-
-print("Respuesta:")
-print(answer)
-
-print("\nEvaluación:")
-print(evaluation)
+print(ev)
